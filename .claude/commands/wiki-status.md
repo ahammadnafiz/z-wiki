@@ -26,7 +26,7 @@ Exclude `_index.md` files from counts.
 
 ### Health signals
 
-- **Raw sources awaiting ingest** — count files in `raw/**/*.{md,pdf,txt}` with no corresponding `wiki/sources/{slug}.md`. If >0, list them (path only).
+- **Raw sources awaiting ingest** — collect the set of `source_path:` values from every `wiki/sources/*.md` frontmatter; compare against all `raw/**/*.{md,pdf,txt}` paths. Any raw file whose path is not in that set is unprocessed. Report the count; if >0, list the paths. **Do not** detect by filename match — raw filenames intentionally differ from wiki-summary slugs.
 - **Stubs approaching promotion** — list stubs whose `source_count ≥ 2` OR whose estimated `inbound_refs ≥ 5` (use grep to estimate). These are what `/wiki-lint` would promote next.
 - **Recent activity** — last 5 entries from `wiki/log.md` (just the header lines).
 

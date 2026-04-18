@@ -341,8 +341,8 @@ z-wiki/
 ### Filenames
 
 - `wiki/` files: **lowercase kebab-case ASCII**, no spaces, no underscores. Globally unique across the whole `wiki/` tree.
-- `raw/` files: can be anything. Claude derives a kebab-case slug for the wiki summary.
 - Source summaries: `{author-lastname}-{year}-{short-title}.md` (e.g. `vaswani-2017-attention-is-all-you-need.md`) when authors/year are known.
+- `raw/` files: **describe the source, don't identify it**. Use short descriptive slugs like `raft-paper.md`, `karpathy-on-llm-wikis.md`, `nyt-profile-medvi.md` — **not** `{lastname}-{year}-*` form, which is reserved for the wiki summary Claude generates. If a raw filename and its wiki summary slug collide, Obsidian's `[[wikilink]]` resolution becomes ambiguous. `/wiki-add` enforces this automatically; if you drop files into `raw/` manually, follow the same rule.
 
 ### Links
 

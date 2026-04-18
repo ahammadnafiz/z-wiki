@@ -10,8 +10,9 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 Read `CLAUDE.md` for conventions. Follow the INGEST operation exactly as specified there.
 
 ## Scope
-- If `$ARGUMENTS` is empty: find every `raw/**/*.{md,pdf,txt}` that has no matching `wiki/sources/{slug}.md`.
+
 - If `$ARGUMENTS` names a path under `raw/`: ingest only that file.
+- If `$ARGUMENTS` is empty: find every `raw/**/*.{md,pdf,txt}` that is not already referenced by the `source_path:` field in any `wiki/sources/*.md` frontmatter. **Detection rule:** collect the set of all `source_path:` values across `wiki/sources/*.md`; any raw file whose repo-relative path is not in that set is unprocessed. Do not detect by filename match — raw filenames intentionally differ from wiki-summary slugs (see `/wiki-add` naming rule).
 
 ## Before writing anything
 - Confirm each source's counterpart does not already exist. If it does, skip.

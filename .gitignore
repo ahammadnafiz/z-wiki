@@ -20,6 +20,24 @@
 node_modules/
 .venv/
 
+# Stray images / binaries dropped in the repo root by mistake.
+# Real vault images belong in wiki/attachments/images/ or raw/assets/.
+# Everything at the repo root that's a binary image is almost certainly unintended.
+/*.png
+/*.jpg
+/*.jpeg
+/*.gif
+/*.webp
+/*.pdf
+/*.zip
+/*.mp4
+/*.mov
+Gemini_Generated_Image_*
+Screenshot*.png
+Screen Shot*.png
+IMG_*.png
+IMG_*.jpg
+
 # Vendored-source folder for obsidian-skills — content lives in .claude/skills/,
 # the original tree at repo root is redundant. Ignored so git doesn't track it.
 # Delete it manually when convenient: `rm -rf obsidian-skills`

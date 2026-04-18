@@ -1,0 +1,34 @@
+# Obsidian: keep plugin config, drop per-machine UI state
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache/
+.obsidian/.DS_Store
+
+# macOS
+.DS_Store
+
+# Claude Code local overrides (not shared)
+.claude/settings.local.json
+.claude/local/
+
+# Editor junk
+*.swp
+*.tmp
+*~
+
+# Misc
+node_modules/
+.venv/
+
+# Vendored-source folder for obsidian-skills — content lives in .claude/skills/,
+# the original tree at repo root is redundant. Ignored so git doesn't track it.
+# Delete it manually when convenient: `rm -rf obsidian-skills`
+obsidian-skills/
+
+# All Obsidian config — per-machine preferences that churn too often to be
+# useful in git history. Each machine maintains its own settings; skills and
+# plugins installed once per machine.
+.obsidian/
+
+# Demo Base file — user edits this in Obsidian, keep local only.
+wiki/views/sources-by-year.base

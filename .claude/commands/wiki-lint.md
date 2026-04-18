@@ -1,5 +1,6 @@
 ---
-description: Health-check the wiki.
+description: Health-check the wiki and auto-fix what's fixable.
+when_to_use: Run weekly, or after a batch of ingests. Scans every wiki page for missing/malformed frontmatter, broken wikilinks, filename violations, drifted source_count, and stubs that crossed promotion thresholds. Auto-fixes the easy ones; reports contradictions, orphans, stale content, and synthesis candidates for human decision. Also triggered by phrases like "audit the wiki", "check wiki health", "run lint".
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 

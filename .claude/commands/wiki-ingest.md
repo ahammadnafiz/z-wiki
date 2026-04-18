@@ -1,5 +1,7 @@
 ---
-description: Process new files in raw/ into the wiki.
+description: Process new files in raw/ into wiki pages.
+argument-hint: "[path]"
+when_to_use: Run after dropping sources into raw/articles/, raw/papers/, or raw/transcripts/. Without arguments, processes every unprocessed source; with a path, ingests only that file. Also triggered by phrases like "ingest the new source", "process raw", "compile what I dropped in".
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 

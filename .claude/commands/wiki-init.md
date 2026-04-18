@@ -1,5 +1,6 @@
 ---
-description: Scaffold or repair the Fiz-Wiki file tree.
+description: Scaffold or repair the wiki file tree (idempotent).
+when_to_use: Run once at initial setup, or whenever the directory structure looks broken or inconsistent (missing subdirectory, missing _index.md, missing template). Safe to re-run — only creates what's absent; never overwrites existing content. Also triggered by phrases like "set up the wiki", "repair the structure", "scaffold the vault".
 allowed-tools: Read, Write, Bash, Glob
 ---
 
@@ -8,7 +9,7 @@ allowed-tools: Read, Write, Bash, Glob
 Read `CLAUDE.md`. Verify the full directory tree listed there exists:
 
 - `raw/{articles,papers,transcripts,assets}/`
-- `wiki/{sources,concepts,entities,syntheses,outputs,attachments/images}/`
+- `wiki/{sources,concepts,entities,syntheses,outputs,views,canvases,attachments/images}/`
 - `templates/`
 - `docs/`
 

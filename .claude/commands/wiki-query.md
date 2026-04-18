@@ -1,5 +1,7 @@
 ---
 description: Answer a question using only the compiled wiki.
+argument-hint: "<question>"
+when_to_use: Use when the user asks a question the wiki could plausibly answer from its compiled sources. Reads wiki/index.md first, shortlists candidate pages, answers with wikilink citations, and files the answer under wiki/outputs/. Never invents facts — if coverage is insufficient, says so and lists missing sources. Also triggered by phrases like "query the wiki", "what does the wiki say about", "ask the vault".
 allowed-tools: Read, Write, Bash, Glob, Grep
 ---
 

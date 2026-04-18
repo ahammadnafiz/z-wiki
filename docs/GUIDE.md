@@ -474,10 +474,10 @@ Say you start recording voice memos and want `raw/voice-memos/`.
 
 ### Add a new slash command
 
-1. Create `.claude/commands/<name>.md` with frontmatter:
+1. Create `.claude/commands/<name>.md` with frontmatter. Minimal:
    ```markdown
    ---
-   description: <one clause, picker-friendly>
+   description: <one clause, shown in the / autocomplete picker>
    allowed-tools: Read, Write, Bash, Glob, Grep
    ---
 
@@ -485,7 +485,23 @@ Say you start recording voice memos and want `raw/voice-memos/`.
 
    Read `CLAUDE.md`. <Explain the operation.>
    ```
-2. Restart Claude Code to pick it up.
+
+   Richer frontmatter for better auto-discovery and UX:
+   ```markdown
+   ---
+   description: <one clause>
+   argument-hint: "<arg-or-[optional]>"           # shown while typing the command
+   when_to_use: <trigger phrases the model uses for auto-invocation>
+   allowed-tools: Read, Write, Bash, Glob, Grep
+   model: haiku | sonnet | opus                   # optional: pin a model for this command
+   effort: low | medium | high | max              # optional: pin effort level
+   context: fork                                  # optional: run in isolated subagent context
+   agent: general-purpose                         # used with context: fork
+   ---
+   ```
+   Full field list: 14 fields total — see the official Claude Code slash-commands docs. The five used by this template (`description`, `argument-hint`, `when_to_use`, `allowed-tools`, plus the model has auto-discovery via `description`) are enough for almost any operation.
+
+2. Restart Claude Code to pick up the new command (or run `/reload-plugins`).
 
 ### Update a template
 

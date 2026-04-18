@@ -1,5 +1,6 @@
 ---
-description: Rebuild wiki/index.md from the filesystem.
+description: Regenerate wiki/index.md from the filesystem.
+when_to_use: Run when the index looks stale or after manual file moves/renames. Lighter than lint — only recomputes source_count and rebuilds index.md. Never modifies page bodies. Also triggered by phrases like "rebuild the index", "recompile the wiki catalog".
 allowed-tools: Read, Write, Bash, Glob
 ---
 

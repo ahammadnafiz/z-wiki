@@ -88,7 +88,11 @@ The session header should mention `CLAUDE.md` was loaded. Verify by asking: *"Wh
 
 ### 3.4 Fill in the vault's topic
 
-Open `CLAUDE.md` and find the line near the top describing the topic of your knowledge base. If it still contains a placeholder, replace it with your actual topic. This matters for ingest — without a topic, Claude has no anchor for what to emphasize or ignore.
+Run `/wiki-init`. On a fresh clone this triggers an interactive wizard: Claude asks about your topic conversationally and writes your answer into `CLAUDE.md` → Overview (replacing the `<!-- REPLACE THIS LINE -->` placeholder). On every subsequent run, the wizard is skipped and only directory/template verification happens.
+
+Why this matters: without a topic anchor, Claude has no signal for what to emphasise or skip during ingest. Be specific — "AI safety research with a focus on mechanistic interpretability" is useful; "tech stuff" is not.
+
+If you'd rather edit `CLAUDE.md` by hand, open it, find the `<!-- REPLACE THIS LINE -->` block in the Overview section, and replace it with one paragraph describing your knowledge base. Then run `/wiki-init` just for the directory verification.
 
 ---
 
@@ -596,15 +600,25 @@ Write a new `docs/graduation-<YYYY-MM-DD>.md` whenever any trigger looks close o
 
 ## 16. Slash commands — quick reference
 
+**Core lifecycle** (the four canonical operations):
+
 | Command | What it does | Common invocation |
 |---|---|---|
-| `/wiki-init` | Scaffold or repair the file tree (idempotent) | Once at setup, or after a botched operation |
-| `/wiki-ingest` | Process new files in `raw/` into the wiki | After dropping sources |
+| `/wiki-ingest [path]` | Process new files in `raw/` into the wiki | After dropping sources, or automatically after `/wiki-add` |
 | `/wiki-query <question>` | Answer a question using only the compiled wiki | When you have a question |
 | `/wiki-lint` | Audit the wiki; auto-fix what's fixable, report the rest | Weekly |
 | `/wiki-compile` | Regenerate `wiki/index.md` from the filesystem | After manual file moves/renames |
 
-All five read `CLAUDE.md` first. Each one writes to `wiki/log.md`. None of them touch `raw/`.
+**Helpers** (quality-of-life commands; not part of the knowledge lifecycle):
+
+| Command | What it does | Common invocation |
+|---|---|---|
+| `/wiki-init` | First-run: topic-setup wizard + directory scaffold. Re-runs: directory/template verification only. | Once at setup; re-run any time the structure looks off |
+| `/wiki-add <url-or-path>` | Fetch a URL (or copy a file) into the right `raw/` subfolder; offer to ingest | When adding a source end-to-end |
+| `/wiki-status` | Read-only: print vault counts, stubs near promotion, recent activity | Any time you want a quick sanity check |
+| `/wiki-new-template <name>` | Scaffold a new template; optionally wire it into `CLAUDE.md → INGEST` | When adding a new kind of source material |
+
+All eight read `CLAUDE.md` first. The core four write to `wiki/log.md`. `/wiki-status` writes nothing. `/wiki-init`, `/wiki-add`, and `/wiki-new-template` may edit `CLAUDE.md` and `raw/` — the only commands allowed to.
 
 ---
 

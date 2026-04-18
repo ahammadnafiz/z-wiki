@@ -32,7 +32,7 @@ The **filing loop** is the point: every answer becomes a new wiki page that futu
 ## Prerequisites
 
 - [Obsidian](https://obsidian.md) ≥ 1.4 — reading/editing surface (MathJax, Properties, graph view)
-- [Claude Code](https://claude.ai/download) — the agent that runs ingest/query/lint/compile
+- [Claude Code](https://claude.ai/download) — the agent that runs the slash commands listed below
 - `git` — history; nothing works without it
 - Optional: `defuddle` (`npm install -g defuddle`) — clean web-page extraction
 
@@ -46,18 +46,33 @@ cd my-wiki
 ```
 
 1. Open the folder as an Obsidian vault (File → Open folder as vault).
-2. Edit `CLAUDE.md` → Overview section → replace the placeholder with a one-paragraph description of your knowledge base's topic. This anchors every ingest.
-3. Start a Claude Code session in the vault directory: `claude`.
-4. Drop a source (a markdown article, a PDF, a transcript) into `raw/articles/`, `raw/papers/`, or `raw/transcripts/`.
-5. Run `/wiki-ingest`. Claude reads the source, writes a summary, stubs concepts and entities, and updates the index.
-6. Ask a question: `/wiki-query What's the key claim in this source?` — Claude answers with wikilink citations and files the answer under `wiki/outputs/`.
-7. Repeat. Add more sources. Ask more questions. Weekly or so, run `/wiki-lint` to keep the wiki healthy.
+2. Start a Claude Code session in the vault directory: `claude`.
+3. Run `/wiki-init`. The first time you run it, Claude asks about your topic conversationally and writes it into `CLAUDE.md` → Overview. Every subsequent run just verifies/repairs the directory tree.
+4. Add a source:
+   - **From a URL:** `/wiki-add https://some.url/article` — Claude fetches it, writes to `raw/articles/`, and offers to ingest immediately.
+   - **From disk:** `/wiki-add /path/to/file.pdf` — Claude copies it to the right `raw/` subfolder.
+   - **Manually:** drop a markdown file into `raw/articles/`, `raw/papers/`, or `raw/transcripts/` and run `/wiki-ingest`.
+5. Ask a question: `/wiki-query What's the key claim in this source?` — Claude answers with wikilink citations and files the answer under `wiki/outputs/`.
+6. Repeat. Add more sources. Ask more questions. Run `/wiki-status` any time for a quick vault summary. Weekly or so, run `/wiki-lint` to keep the wiki healthy.
+
+## Slash commands
+
+| Command | What it does |
+|---|---|
+| `/wiki-init` | First-run: asks about your topic, writes it into CLAUDE.md. Re-runs: verifies/repairs directory structure. |
+| `/wiki-add <url-or-path>` | Fetches a URL (or copies a file) into the right `raw/` subfolder and offers to ingest. |
+| `/wiki-ingest [path]` | Compiles `raw/` into wiki pages (summaries, concepts, entities, stubs). |
+| `/wiki-query <question>` | Answers using only the compiled wiki; files the answer under `wiki/outputs/`. |
+| `/wiki-status` | One-screen vault summary — counts, stubs-near-promotion, recent activity. |
+| `/wiki-lint` | Weekly health check — auto-fixes what's fixable, reports the rest. |
+| `/wiki-compile` | Regenerates `wiki/index.md` from the filesystem. |
+| `/wiki-new-template <name>` | Scaffolds a new template for a new kind of source, wires it into CLAUDE.md. |
 
 ## Learn more
 
 - **[docs/GUIDE.md](docs/GUIDE.md)** — step-by-step walkthroughs for every operation, file conventions, troubleshooting.
 - **`CLAUDE.md`** — the operating spec. Claude loads this on every session.
-- **`.claude/commands/`** — the five slash commands.
+- **`.claude/commands/`** — the eight slash commands above.
 - **`templates/`** — the page templates Claude follows when creating wiki pages.
 
 ## Background and credit

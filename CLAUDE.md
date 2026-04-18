@@ -250,7 +250,8 @@ Claude Code may also auto-discover these for native `Skill`-tool invocation in f
 | `.claude/skills/defuddle/SKILL.md` | Extracting clean markdown from standard web pages. **Prefer `defuddle` over `WebFetch` for article-style URLs**; WebFetch remains correct for arXiv HTML, GitHub, raw `.md` URLs, and anything already structured. Check `defuddle` is on PATH first; falls back to WebFetch if not installed. |
 
 ## Things you must not do
-- Modify anything in `raw/`.
+- Modify **existing** files in `raw/`. Creating new files in `raw/` via `/wiki-add` is allowed; editing or deleting content the user placed there is not.
+- Edit `CLAUDE.md` itself, **except** during `/wiki-init` (first-run topic setup) or `/wiki-new-template` (teaching INGEST about a new source type). Never silently edit it during regular operation.
 - Rewrite `wiki/log.md`.
 - Use Dataview, Canvas, or Bases as **load-bearing** structure. The
   authoritative index (`wiki/index.md`), changelog (`wiki/log.md`), every

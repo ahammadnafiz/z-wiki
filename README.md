@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/hero.png" alt="z-wiki" width="600">
+
 # z-wiki
 
 **A personal, LLM-maintained knowledge wiki template for Claude Code.**

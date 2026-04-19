@@ -105,16 +105,21 @@ def render_top_index(counts: dict[str, int], tags: list[str], vault: Path) -> st
     lines.append("")
     lines.append("## Catalogs")
     lines.append("")
+    # Use plain markdown links (not wikilinks) for generated catalog
+    # references. The wikilink namespace is reserved for content
+    # pages whose slugs must be globally unique; navigation shards
+    # live in a separate namespace to avoid slug collisions with
+    # future concept/entity pages of the same name.
     for d in TYPE_DIRS:
         if counts.get(d, 0) == 0:
             continue
-        lines.append(f"- [[_index|{TYPE_LABELS[d]}]] — `wiki/{d}/_index.md`")
+        lines.append(f"- [{TYPE_LABELS[d]}]({d}/_index.md)")
     lines.append("")
     if tags:
         lines.append("## Tag shards")
         lines.append("")
         for tag in tags:
-            lines.append(f"- [[{tag}|#{tag}]] — `wiki/indexes/by-tag/{tag}.md`")
+            lines.append(f"- [#{tag}](indexes/by-tag/{tag}.md)")
         lines.append("")
     lines.append("## How to find things")
     lines.append("")
@@ -197,10 +202,13 @@ def render_type_index(
 
     outputs: list[tuple[Path, str]] = []
 
-    # Parent _index.md points at shards.
+    # Parent _index.md points at alphabetical shards. Plain markdown
+    # links, not wikilinks — these shards live outside the content
+    # namespace and would collide on basename (every type directory
+    # would have its own `_index-a-h.md`, making the wikilink
+    # `[[_index-a-h]]` ambiguous).
     parent_lines = header + [
-        f"- [[_index-{slug}|{label}]] — `wiki/{type_dir}/_index-{slug}.md` "
-        f"({len(items)} entries)"
+        f"- [{label}](_index-{slug}.md) ({len(items)} entries)"
         for slug, label, items in buckets
     ]
     outputs.append((out_root / "_index.md", "\n".join(parent_lines) + "\n"))

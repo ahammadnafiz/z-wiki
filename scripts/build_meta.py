@@ -391,9 +391,11 @@ def embed_pages(vault: Path, built: dict) -> tuple[int, int, int]:
             matrix[i] = fresh[fresh_cursor]
             fresh_cursor += 1
 
-    # Atomic writes.
+    # Atomic writes. Use a binary handle so np.save does not auto-append
+    # ".npy" to the tmp path (which would break the replace below).
     tmp = mat_path.with_suffix(mat_path.suffix + ".tmp")
-    np.save(tmp, matrix)
+    with open(tmp, "wb") as fh:
+        np.save(fh, matrix)
     tmp.replace(mat_path)
     _write_manifest(man_path, new_rows)
 

@@ -43,8 +43,10 @@ Derive "full pages" vs "stubs" from each page's `type:` frontmatter
   Report the count; if >0, list the paths.
 - **Stubs approaching promotion** — read `wiki/.meta/backlinks.json`
   for nodes whose `type` is `concepts` or `entities` AND whose
-  `source_count >= 2` OR `inbound_refs >= 5`, AND whose frontmatter
-  `type:` is `stub`. These are what `/wiki-promote` would promote.
+  `source_count >= 2` OR `inbound_refs_primary >= 5`, AND whose frontmatter
+  `type:` is `stub`. These are what `/wiki-promote` would promote. (The
+  unscoped `inbound_refs` count is intentionally **not** used here —
+  outputs and syntheses are Claude-authored and would inflate the signal.)
 - **Recent activity** — last 5 entries from `wiki/log.md`.
 - **Sidecar freshness** — newest file in `wiki/sources|concepts|entities`
   vs `wiki/.meta/backlinks.json.generated_at`. If sidecar is older,

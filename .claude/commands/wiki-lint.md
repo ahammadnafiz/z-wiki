@@ -27,8 +27,8 @@ recent 7 days (by `last_seen` frontmatter) stays in the frontmatter
 tier unless a frontmatter problem signals the body might be wrong.
 
 - **Tier 1 — frontmatter only.** Read the first ~30 lines of every
-  page. Check required fields, shape, `source_count` /
-  `inbound_refs` against the sidecar. Fix in place.
+  page. Check required fields, shape, `source_count` / `inbound_refs` /
+  `inbound_refs_primary` against the sidecar. Fix in place.
 - **Tier 2 — full body.** Only for pages that failed Tier 1, or
   whose `last_seen` is older than 7 days, or that are new since the
   last lint. Check wikilink resolution, callout syntax, and
@@ -48,18 +48,21 @@ tier unless a frontmatter problem signals the body might be wrong.
   inbound reference.
 - Two pages describing the same subject under different names →
   merge, keeping the more common name.
-- `source_count` / `inbound_refs` drift on concept/entity pages →
-  recount from `wiki/.meta/backlinks.json` and update frontmatter.
+- `source_count` / `inbound_refs` / `inbound_refs_primary` drift on
+  concept/entity pages → recount from `wiki/.meta/backlinks.json` and
+  update frontmatter.
 - `wiki/views/**/*.base` YAML validity.
 - `wiki/canvases/**/*.canvas` JSON validity.
 
 ## Promote candidates, do NOT auto-promote
 
 Stubs that cross the promotion threshold (`source_count >= 2` or
-`inbound_refs >= 5`) are listed as candidates. LINT **does not**
+`inbound_refs_primary >= 5`) are listed as candidates. LINT **does not**
 promote them automatically — that is `/wiki-promote`'s job. This
 keeps LINT cheap and predictable; promotion is where real cost
-lives.
+lives. The unscoped `inbound_refs` is never used for promotion (it
+counts outputs/syntheses, which are Claude-authored downstream
+artifacts).
 
 ## Do not auto-fix — report instead
 

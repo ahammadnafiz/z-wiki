@@ -50,6 +50,14 @@ STOPWORDS = {
     "what", "which", "who", "why", "with",
 }
 
+# SHARED CONTRACT with scripts/build_meta.py — keep aligned.
+# build_meta.py writes wiki/.meta/search-index.tsv with raw (un-tokenized)
+# field values in the order: path \t title \t tags \t concepts \t summary.
+# Tokenization is query-time only; this regex must accept the characters
+# build_meta emits (slug kebab-case, bracketed wikilinks, space-joined tags)
+# after .lower(). Brackets `[[ ]]` are stripped by the character class; the
+# slug chars inside survive. Changing either side alone will silently degrade
+# retrieval — update both files together.
 TOKEN_RE = re.compile(r"[a-z0-9][a-z0-9-]*")
 
 RRF_K = 60

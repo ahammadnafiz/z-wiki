@@ -369,10 +369,15 @@ A stub graduates to a full page when **either** axis is met:
 
 - **Source axis:** `source_count ≥ 2` — the subject appears in ≥2 raw
   sources (i.e. is wikilinked from ≥2 distinct `wiki/sources/*.md` pages).
-- **Reference axis:** `inbound_refs ≥ 5` — the subject is wikilinked from
-  ≥5 distinct pages anywhere in `wiki/`. Catches concepts that are
-  load-bearing inside one deep source or structurally central to the vault
-  even when only one source has covered them so far.
+- **Reference axis:** `inbound_refs_primary ≥ 5` — the subject is
+  wikilinked from ≥5 distinct pages under `wiki/sources/`, `wiki/concepts/`,
+  or `wiki/entities/`. Outputs and syntheses are Claude-written downstream
+  artifacts and do **not** count, so a stub cannot bootstrap its own
+  promotion by being cited in a handful of generated outputs. Catches
+  concepts that are load-bearing inside one deep source or structurally
+  central to the vault even when only one source has covered them so far.
+  (The older untyped `inbound_refs` metric is still emitted in
+  `backlinks.json` for diagnostics, but must not be used for promotion.)
 
 Both axes are evaluated by the Ingest post-pass (step 3) and by Lint.
 

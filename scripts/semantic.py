@@ -74,7 +74,10 @@ def load_index(vault: Path):
     man_path = meta / "embeddings-manifest.tsv"
     if not mat_path.exists() or not man_path.exists():
         return None, []
-    matrix = np.load(mat_path)
+    # allow_pickle=False: reject arbitrary-object deserialization at load
+    # time. Embeddings are plain float32 matrices; anything else is a bug
+    # or an attack.
+    matrix = np.load(mat_path, allow_pickle=False)
     rows: list[dict] = []
     with man_path.open("r", encoding="utf-8") as f:
         for line in f:

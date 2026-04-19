@@ -1,6 +1,6 @@
 ---
 description: Regenerate wiki/index.md, per-type shards, and tag shards from the filesystem.
-when_to_use: Run when the index looks stale or after manual file moves/renames. Lighter than lint — only recomputes source_count/inbound_refs and rebuilds the shard tree. Never modifies page bodies. Also triggered by phrases like "rebuild the index", "recompile the wiki catalog".
+when_to_use: Run when the index looks stale or after manual file moves/renames. Lighter than lint — only recomputes source_count / inbound_refs / inbound_refs_primary and rebuilds the shard tree. Never modifies page bodies. Also triggered by phrases like "rebuild the index", "recompile the wiki catalog".
 allowed-tools: Read, Write, Bash, Glob
 ---
 
@@ -33,11 +33,12 @@ Read `CLAUDE.md` for conventions. Follow the COMPILE operation exactly as specif
    `wiki/<type>/_index.md` (auto-sharded if >10K tokens), and
    `wiki/indexes/by-tag/*.md` for every tag with ≥3 members.
 
-3. Reconcile frontmatter `source_count` / `inbound_refs` with the
-   fresh sidecar. For every concept/entity page whose frontmatter
-   disagrees with `wiki/.meta/backlinks.json`, rewrite the two
-   frontmatter fields in place. This is the **only** body-adjacent
-   change COMPILE is allowed to make.
+3. Reconcile frontmatter `source_count` / `inbound_refs` /
+   `inbound_refs_primary` with the fresh sidecar. For every
+   concept/entity page whose frontmatter disagrees with
+   `wiki/.meta/backlinks.json`, rewrite those frontmatter fields in
+   place. This is the **only** body-adjacent change COMPILE is allowed
+   to make.
 
 4. Append one `compile` entry to `wiki/log.md` with per-type counts
    and the number of frontmatter reconciliations.

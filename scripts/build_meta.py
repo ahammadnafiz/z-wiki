@@ -36,6 +36,11 @@ SIMPLE_KV_RE = re.compile(r"^(\w[\w-]*):\s*(.+?)\s*$")
 def parse_frontmatter(text: str) -> dict:
     """Return the YAML-ish frontmatter as a dict. Lightweight parser;
     handles the subset z-wiki uses (scalars + list-of-scalars)."""
+    # Strip UTF-8 BOM and any leading blank lines so editors that prepend
+    # either don't silently zero out the frontmatter.
+    if text.startswith("\ufeff"):
+        text = text[1:]
+    text = text.lstrip("\n\r")
     m = FRONTMATTER_RE.match(text)
     if not m:
         return {}
@@ -83,6 +88,9 @@ def _unquote(s: str) -> str:
 
 def body_wikilinks(text: str) -> list[str]:
     """Return every [[target]] in the body (not frontmatter), deduped, in order."""
+    if text.startswith("\ufeff"):
+        text = text[1:]
+    text = text.lstrip("\n\r")
     m = FRONTMATTER_RE.match(text)
     body = text[m.end():] if m else text
     seen: dict[str, None] = {}
@@ -123,7 +131,26 @@ def slug_of(path: Path) -> str:
 
 def build(vault: Path) -> dict:
     pages = all_pages(vault)
-    page_by_slug: dict[str, Path] = {slug_of(p): p for p in pages}
+    # Detect slug collisions up-front. The global-slug-uniqueness invariant
+    # is load-bearing: wikilinks resolve by stem, and a collision silently
+    # corrupts the backlinks graph (last-write-wins in the dict). Fail loud.
+    page_by_slug: dict[str, Path] = {}
+    collisions: dict[str, list[Path]] = defaultdict(list)
+    for p in pages:
+        slug = slug_of(p)
+        if slug in page_by_slug:
+            collisions[slug].append(p)
+            # First winner already recorded; remember the earlier path too.
+            if page_by_slug[slug] not in collisions[slug]:
+                collisions[slug].insert(0, page_by_slug[slug])
+        else:
+            page_by_slug[slug] = p
+    if collisions:
+        msg_lines = ["slug collision: wikilinks resolve by filename stem and must be globally unique"]
+        for slug, paths in sorted(collisions.items()):
+            rels = ", ".join(str(p.relative_to(vault)) for p in paths)
+            msg_lines.append(f"  {slug}: {rels}")
+        raise SystemExit("\n".join(msg_lines))
 
     # Resolve wikilinks by slug (globally unique filename invariant).
     outbound: dict[str, list[str]] = {}
@@ -138,28 +165,43 @@ def build(vault: Path) -> dict:
         outbound[slug_of(p)] = links
 
     # Inverse: backlinks.
+    # Three axes are tracked:
+    #   inbound_all       — every inbound wikilink (used by LINT, graph views).
+    #   inbound_sources   — inbound only from wiki/sources/ (authoritative signal).
+    #   inbound_primary   — inbound from sources+concepts+entities (promotion signal).
+    # Outputs and syntheses are Claude-written downstream artifacts; counting
+    # them for promotion would let the system bootstrap its own importance.
+    PRIMARY_TYPES = {"sources", "concepts", "entities"}
     inbound_all: dict[str, list[str]] = defaultdict(list)
     inbound_sources: dict[str, list[str]] = defaultdict(list)
+    inbound_primary: dict[str, list[str]] = defaultdict(list)
     for src_slug, targets in outbound.items():
         src_path = page_by_slug[src_slug]
-        is_source = src_path.parent.name == "sources"
+        src_type = src_path.parent.name
+        is_source = src_type == "sources"
+        is_primary = src_type in PRIMARY_TYPES
         for t in targets:
             inbound_all[t].append(src_slug)
             if is_source:
                 inbound_sources[t].append(src_slug)
+            if is_primary:
+                inbound_primary[t].append(src_slug)
 
     # backlinks.json
     backlinks_nodes: dict[str, dict] = {}
     for slug, path in sorted(page_by_slug.items()):
         ia = sorted(set(inbound_all.get(slug, [])))
         isc = sorted(set(inbound_sources.get(slug, [])))
+        ip = sorted(set(inbound_primary.get(slug, [])))
         backlinks_nodes[slug] = {
             "path": str(path.relative_to(vault)).replace(os.sep, "/"),
             "type": path.parent.name,
             "inbound_sources": isc,
+            "inbound_primary": ip,
             "inbound_all": ia,
             "source_count": len(isc),
             "inbound_refs": len(ia),
+            "inbound_refs_primary": len(ip),
         }
     backlinks = {
         "version": 1,
@@ -191,6 +233,19 @@ def build(vault: Path) -> dict:
     }
 
     # search-index.tsv  (one line per page, tab-separated, grep-friendly)
+    #
+    # SHARED CONTRACT with scripts/wiki_search.py — keep aligned.
+    # Column order (5 fields, tab-separated):   path \t title \t tags \t concepts \t summary
+    # We intentionally do NOT tokenize here. Tokenization is query-time in
+    # wiki_search.tokenize() using TOKEN_RE = r"[a-z0-9][a-z0-9-]*"; the chars
+    # we emit below must remain matchable by that regex after .lower():
+    #   - tags are space-joined raw frontmatter strings (slashes allowed, e.g. "domain/ml"
+    #     — the regex will split on the slash, which is fine for retrieval)
+    #   - concepts are emitted as "[[slug]] [[slug2]]"; the brackets are dropped
+    #     by the regex and the slugs are preserved as tokens
+    #   - summary only strips \t and \n so the TSV stays one-line-per-page
+    # If you change the field set, the separator, or start pre-tokenizing here,
+    # update wiki_search.parse_line() (fixed column count) and tokenize() in lock-step.
     search_lines: list[str] = []
     for slug, path in sorted(page_by_slug.items()):
         fm = page_fm.get(slug, {})
@@ -339,7 +394,9 @@ def embed_pages(vault: Path, built: dict) -> tuple[int, int, int]:
 
     old_rows = _read_manifest(man_path)
     old_sha = {r["slug"]: r["sha256"] for r in old_rows}
-    old_matrix = np.load(mat_path) if mat_path.exists() else None
+    # allow_pickle=False: refuse arbitrary-object deserialization when
+    # loading the embedding matrix during an unattended sidecar rebuild.
+    old_matrix = np.load(mat_path, allow_pickle=False) if mat_path.exists() else None
     old_slug_to_idx = {r["slug"]: i for i, r in enumerate(old_rows)}
 
     page_fm = built["page_fm"]

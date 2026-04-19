@@ -110,14 +110,14 @@ re-reading source bodies.
    `wiki/.meta/search-index.tsv`, and refreshes embeddings for pages
    whose text changed (no-op if `/wiki-enable-semantic` hasn't run).
 2. From the fresh backlinks, identify stubs that crossed either
-   promotion threshold (`source_count >= 2` or `inbound_refs >= 5`).
+   promotion threshold (`source_count >= 2` or `inbound_refs_primary >= 5`).
    **Do not promote them.** Print them as "promotion candidates" in
    the final report and tell the user to run `/wiki-promote --list`.
 3. Run `python3 scripts/shard_index.py` — rebuilds the top `index.md`
    and per-type / per-tag shards.
-4. Reconcile frontmatter `source_count` / `inbound_refs` with the
-   sidecar for any concept/entity touched by this batch. Rewrite
-   frontmatter in place when it drifted.
+4. Reconcile frontmatter `source_count` / `inbound_refs` /
+   `inbound_refs_primary` with the sidecar for any concept/entity
+   touched by this batch. Rewrite frontmatter in place when it drifted.
 
 ## Reporting
 

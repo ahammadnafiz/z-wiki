@@ -1,7 +1,7 @@
 ---
 description: Promote stubs that crossed promotion thresholds into full concept/entity pages.
 argument-hint: "[slug | --all | --list]"
-when_to_use: Use to graduate stubs whose source_count or inbound_refs has met the threshold. INGEST no longer auto-promotes — it only flags candidates. This command is the explicit promotion gate so the (expensive) full-page generation step is user-controlled. Triggered by phrases like "promote stubs", "graduate pending concepts".
+when_to_use: Use to graduate stubs whose source_count or inbound_refs_primary has met the threshold. INGEST no longer auto-promotes — it only flags candidates. This command is the explicit promotion gate so the (expensive) full-page generation step is user-controlled. Triggered by phrases like "promote stubs", "graduate pending concepts".
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 
@@ -29,8 +29,10 @@ List candidates without writing anything:
    `wiki/entities/`, run `python3 scripts/build_meta.py --embed-if-enabled` first.
 2. For every page whose `type: stub` frontmatter matches:
    - `source_count >= 2` (source axis), **or**
-   - `inbound_refs >= 5` (reference axis)
-   print one line: `slug · source_count=N · inbound_refs=M · title`.
+   - `inbound_refs_primary >= 5` (reference axis — counts inbound
+     wikilinks only from `sources/`, `concepts/`, `entities/`; never
+     from `outputs/` or `syntheses/`)
+   print one line: `slug · source_count=N · inbound_refs_primary=M · title`.
 3. Print totals. Exit. No writes.
 
 ### Mode 2: `$ARGUMENTS` is a slug

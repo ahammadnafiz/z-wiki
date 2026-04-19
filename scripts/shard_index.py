@@ -241,19 +241,31 @@ def render_type_index(
 
 
 def render_tag_shards(
-    tags_to_pages: dict[str, list[dict]], vault: Path
+    tags_to_pages: dict[str, list[dict]],
+    vault: Path,
+    page_slugs: set[str] | None = None,
 ) -> list[tuple[Path, str]]:
+    """Write one shard per tag with >= TAG_MIN_MEMBERS members.
+
+    A tag whose slug collides with an existing content-page slug is
+    skipped — writing both `wiki/concepts/<slug>.md` and
+    `wiki/indexes/by-tag/<slug>.md` breaks Obsidian's filename-based
+    wikilink resolution (ambiguous `[[<slug>]]`). The colliding tag
+    still exists on pages; we just don't mint a shard file for it."""
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     out: list[tuple[Path, str]] = []
     shard_root = vault / "wiki" / "indexes" / "by-tag"
     shard_root.mkdir(parents=True, exist_ok=True)
 
-    # Clean stale shards first.
     for existing in shard_root.glob("*.md"):
         existing.unlink()
 
+    page_slugs = page_slugs or set()
+
     for tag, pages in sorted(tags_to_pages.items()):
         if len(pages) < TAG_MIN_MEMBERS:
+            continue
+        if tag in page_slugs:
             continue
         header = [
             "---",
@@ -334,9 +346,12 @@ def main() -> int:
                 if not t:
                     continue
                 tags_to_pages[t].append(e)
-    tag_shard_writes = render_tag_shards(tags_to_pages, vault)
+    page_slugs = set(backlinks["nodes"].keys())
+    tag_shard_writes = render_tag_shards(tags_to_pages, vault, page_slugs)
     emitted_tags = sorted(
-        t for t, members in tags_to_pages.items() if len(members) >= TAG_MIN_MEMBERS
+        t
+        for t, members in tags_to_pages.items()
+        if len(members) >= TAG_MIN_MEMBERS and t not in page_slugs
     )
 
     # Write top index.

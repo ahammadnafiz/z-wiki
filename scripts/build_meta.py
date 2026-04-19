@@ -28,16 +28,19 @@ from pathlib import Path
 
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 WIKILINK_RE = re.compile(r"\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|[^\]]*)?\]\]")
-TAG_LIST_HEAD_RE = re.compile(r"^tags:\s*$", re.MULTILINE)
-TAG_LIST_ITEM_RE = re.compile(r"^\s*-\s+(.+?)\s*$")
+LIST_HEAD_RE = re.compile(r"^(\w[\w-]*):\s*$")
+LIST_ITEM_RE = re.compile(r"^\s+-\s+(.+?)\s*$")
 SIMPLE_KV_RE = re.compile(r"^(\w[\w-]*):\s*(.+?)\s*$")
 
 
 def parse_frontmatter(text: str) -> dict:
     """Return the YAML-ish frontmatter as a dict. Lightweight parser;
-    handles the subset z-wiki uses (scalars + list-of-scalars)."""
-    # Strip UTF-8 BOM and any leading blank lines so editors that prepend
-    # either don't silently zero out the frontmatter.
+    handles the subset z-wiki uses (scalars + list-of-scalars).
+
+    Multi-line list keys (any `key:` followed by indented `- item` lines)
+    are parsed as list-of-string — required for `tags:`, `related:`,
+    `authors:`, `sources_cited:`, and any other list-valued field the
+    schema grows."""
     if text.startswith("\ufeff"):
         text = text[1:]
     text = text.lstrip("\n\r")
@@ -53,21 +56,22 @@ def parse_frontmatter(text: str) -> dict:
         if not line.strip() or line.lstrip().startswith("#"):
             i += 1
             continue
-        if TAG_LIST_HEAD_RE.match(line):
-            tags: list[str] = []
+        m_head = LIST_HEAD_RE.match(line)
+        if m_head:
+            key = m_head.group(1)
+            items: list[str] = []
             i += 1
             while i < len(lines):
-                m2 = TAG_LIST_ITEM_RE.match(lines[i])
+                m2 = LIST_ITEM_RE.match(lines[i])
                 if not m2:
                     break
-                tags.append(_unquote(m2.group(1)))
+                items.append(_unquote(m2.group(1)))
                 i += 1
-            out["tags"] = tags
+            out[key] = items
             continue
         m_kv = SIMPLE_KV_RE.match(line)
         if m_kv:
             key, val = m_kv.group(1), m_kv.group(2)
-            # list on same line: key: [a, b, c]
             val = val.strip()
             if val.startswith("[") and val.endswith("]"):
                 inner = val[1:-1].strip()

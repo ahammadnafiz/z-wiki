@@ -25,6 +25,8 @@ If the two collide, Obsidian's `[[wikilink]]` resolution becomes ambiguous. Reje
 1. **Fetch the content.**
    - **Prefer `defuddle`** (installed via `npm install -g defuddle`) for article-style URLs: blog posts, newsletters, X/Twitter long-forms, news sites, Reddit. It strips navigation and boilerplate — cheaper and cleaner than WebFetch. Skill reference: `.claude/skills/defuddle/SKILL.md`.
    - **Use `WebFetch` directly** for: arXiv HTML (`arxiv.org/abs/` and `arxiv.org/html/`), GitHub pages (`github.com/.../blob/.../README.md`), raw `.md` URLs, anything already structured.
+   - **Large-page fallback.** If `defuddle` fails with `Error: Page too large (NMB, max 5MB)`, bypass its fetcher: download the HTML with `curl -L --compressed -o /tmp/page.html "<url>"`, then parse the local file with `defuddle parse /tmp/page.html --md -o /tmp/page.md`. Then strip inline base64 data URIs (they bloat output 40×+ on research blogs) with `sed -E 's|!\[([^]]*)\]\(data:[^)]+\)|![\1](<inline-image-stripped>)|g'`. Full pipeline is in the updated defuddle skill. If `WebFetch` fails with a size error, same approach applies — curl to disk first.
+   - **Fetch rules (all paths).** Always `curl -L --compressed` to stream to disk; never pull large content into model context. Follow redirects (`-L`). For very large (>100MB) or flaky sources, prefer `wget -c --tries=3` so a dropped connection doesn't force a restart.
    - If the URL returns an error or empty content, stop and report — do not write an empty file.
 
 2. **Derive a descriptive raw-filename slug** per the naming rule above.
@@ -47,10 +49,10 @@ If the two collide, Obsidian's `[[wikilink]]` resolution becomes ambiguous. Reje
 
 1. **List available subfolders** by scanning `raw/*` for existing directories. Typical set: `articles/`, `papers/`, `transcripts/`. Any custom subfolders created by `/wiki-new-template` (e.g. `voice-memos/`, `meeting-minutes/`) should also appear in the prompt — do not hardcode the three built-ins.
 
-2. **Dispatch by extension:**
-   - `.pdf` → default `raw/papers/{slug}.pdf`. Use the file's basename, kebab-cased, as the slug — but apply the naming rule above: if the basename looks like `{lastname}-{year}-*`, suggest a descriptive alternative.
-   - `.md` or `.txt` → ask the user: *"Which subfolder? Options: <list of available subdirs under raw/>. Default: articles."* Copy to the chosen `raw/{subfolder}/{slug}.md`. Apply the same naming rule to the slug.
-   - Any other extension → refuse with a clear message listing supported types (`.pdf`, `.md`, `.txt`).
+2. **Dispatch by extension** (the set must stay in sync with INGEST's file-type scope in `CLAUDE.md`):
+   - `.pdf`, `.epub` → default `raw/papers/{slug}.{ext}`. Use the file's basename, kebab-cased, as the slug — but apply the naming rule above: if the basename looks like `{lastname}-{year}-*`, suggest a descriptive alternative.
+   - `.md`, `.txt`, `.docx`, `.rtf`, `.pptx`, `.xlsx`, `.xls`, `.html`, `.htm` → ask the user: *"Which subfolder? Options: <list of available subdirs under raw/>. Default: articles."* Copy to the chosen `raw/{subfolder}/{slug}.{ext}` (preserve the original extension — don't rewrite `.docx` to `.md`; INGEST extracts to markdown at read time via `markitdown`). Apply the same naming rule to the slug.
+   - Any other extension → refuse with a clear message listing supported types: `.pdf`, `.epub`, `.md`, `.txt`, `.docx`, `.rtf`, `.pptx`, `.xlsx`, `.xls`, `.html`, `.htm`. For audio/video/archives or structured data (`.csv`, `.json`, `.xml`), tell the user they aren't in the default ingestion scope and propose a path forward.
 
 3. **Never overwrite.** If the target file already exists, propose a different slug or stop.
 

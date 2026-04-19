@@ -83,20 +83,43 @@ Additional fields by type:
 Trigger: I say "ingest" or run `/wiki-ingest`, or you see new files in `raw/`
 that have no matching summary in `wiki/sources/`.
 Steps:
-1. Find unprocessed sources: files in `raw/**/*.{md,pdf,txt}` with no
+1. Find unprocessed sources: files in
+   `raw/**/*.{md,txt,pdf,docx,pptx,xlsx,xls,html,htm,epub,rtf}` with no
    `wiki/sources/{slug}.md` counterpart.
 2. For each one:
    a. Read fully.
-      - Markdown / text: read directly.
-      - PDF: read the file directly (Claude Code supports native PDF input).
-        If text extraction is poor (scanned / image-only PDF), rasterize
-        pages and read visually.
-      - PDF > ~50 pages (books, theses, long reports): **stop before writing
-        anything** and propose a chapter-split plan — one source summary per
-        chapter or per logical unit, slug suffixed `-ch01`, `-ch02`, etc.
-        Wait for my go-ahead before ingesting.
-      - Standalone image without a companion markdown/PDF: tell me and stop.
-        Images alone are not a source.
+      - Markdown / text (`.md`, `.txt`): read directly.
+      - Binary documents (`.pdf`, `.docx`, `.pptx`, `.xlsx`, `.xls`,
+        `.html`, `.htm`, `.epub`, `.rtf`): extract to markdown with
+        `markitdown`, not native file input. Run
+        `markitdown <path> -o <tmp>.md` and read the emitted markdown.
+        `markitdown` preserves headings, lists, tables, and links in a
+        token-efficient form that LLMs parse cleanly, and it unifies
+        extraction across all document types. Check `markitdown` is on PATH
+        first; if it isn't installed, install with
+        `pip install 'markitdown[all]'` (or scoped extras like
+        `[pdf, docx, pptx, xlsx]` for a smaller footprint). If the output
+        is empty or gibberish (e.g. scanned / image-only PDF), fall back to
+        rasterizing pages and reading visually.
+      - **Token gating** (applies to the extracted markdown for any binary
+        document; also applies to `.md` / `.txt` sources read directly):
+        - **≤50k tokens** — read the full extraction in one pass.
+        - **50k–200k tokens** — recursive chunking. Split the extracted
+          markdown into ~20k-token chunks with ~2k-token overlap, respecting
+          heading / section boundaries where possible. Read and summarize
+          chunk-by-chunk, carrying forward a running outline so cross-chunk
+          references (figures, earlier definitions) stay coherent. Produce
+          **one** source summary from the merged notes.
+        - **>200k tokens** (books, theses, long reports) — **stop before
+          writing anything** and propose a chapter-split plan: one source
+          summary per chapter or per logical unit, slug suffixed `-ch01`,
+          `-ch02`, etc. Wait for my go-ahead before ingesting.
+      - Standalone image without a companion document (markdown, PDF,
+        DOCX, etc.): tell me and stop. Images alone are not a source.
+      - Anything else (audio, video, archives, structured data like raw
+        JSON/CSV/XML, URLs): tell me and stop. Propose how to handle it
+        before ingesting — these formats aren't in the default INGEST
+        scope even though `markitdown` can convert some of them.
    b. Create `wiki/sources/{slug}.md` from the right template:
       - `templates/paper-summary.md` for anything in `raw/papers/` (academic
         papers, book chapters, long-form PDFs with citations).

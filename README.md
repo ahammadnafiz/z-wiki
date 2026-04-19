@@ -51,20 +51,22 @@ Inspired by [Andrej Karpathy's LLM knowledge bases](https://x.com/karpathy/) and
                          └───────────────┘
 ```
 
-**Three layers, four core operations:**
+**Three layers, six core operations:**
 
 | Layer | Contents | Owner |
 |---|---|---|
 | `raw/` | Source material you drop in (articles, papers, transcripts) | **You** — immutable once placed |
-| `wiki/` | LLM-authored summaries, concepts, entities, outputs | **Claude Code** |
+| `wiki/` | LLM-authored summaries, concepts, entities, outputs + generated sidecar (`.meta/`) and index shards (`indexes/`) | **Claude Code** |
 | `CLAUDE.md` | The spec that controls how Claude writes `wiki/` | **Both** — co-evolved |
 
 - **`/wiki-ingest`** — compile raw into wiki pages with cross-referenced wikilinks
 - **`/wiki-query`** — answer questions from the wiki; file the answer back as a new page
 - **`/wiki-lint`** — audit the wiki for broken links, drift, promotion candidates
-- **`/wiki-compile`** — rebuild the master index from the filesystem
+- **`/wiki-compile`** — rebuild the master index and sidecar cache from the filesystem
+- **`/wiki-promote`** — graduate stubs that crossed promotion thresholds (user-gated)
+- **`/wiki-search`** — grep-first (or hybrid) ranked search; read-only browse primitive
 
-The **filing loop** — every answered query saved back as a citable page — is what makes knowledge compound.
+The **filing loop** — every answered query saved back as a citable page — is what makes knowledge compound. The **sidecar cache + sharded index** keep every operation's cost bounded regardless of vault size. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the system design.
 
 ---
 
@@ -119,16 +121,19 @@ The filed answer joins the wiki. The next related query cites it.
 
 ## Features
 
-- 🗂  **Plain-markdown substrate.** No database, no embeddings, no vector store. Renders on GitHub, portable forever.
+- 🗂  **Plain-markdown substrate.** Core storage is `.md` + YAML frontmatter. Renders on GitHub, portable forever.
 - 🔗 **Cross-referenced wikilinks.** Every concept and entity gets its own page; Obsidian's graph view shows the emergent structure.
 - 🧠 **Compiled, not retrieved.** Sources are read once and compiled into summaries + concept + entity pages. Queries run against the compiled wiki, not raw documents.
 - ♾  **Filing loop.** Every answered query is saved as a wiki page the next query can cite. Knowledge compounds with use.
-- 🎯 **Stub promotion, two-axis.** Concepts are promoted from stub → full page automatically when they cross a source-count OR inbound-reference threshold.
+- 🔍 **Grep-first search, hybrid-optional.** Lexical BM25 always available (zero deps). `/wiki-enable-semantic` flips on local embeddings + hybrid search with Reciprocal Rank Fusion in one command. Never a vector DB, never a hosted service.
+- ⚡ **Sidecar cache + sharded index.** `wiki/.meta/` and `wiki/indexes/` keep per-query cost bounded regardless of vault size. Scales to thousands of pages on a laptop.
+- 🧵 **Subagent dispatch for batch ingest.** Batches of 3+ sources fan out one subagent per source. Parent context stays thin; ingest scales without context rot.
+- 🛡 **11 invariant tests.** Broken links, drifted counts, kebab-case, bounded index size, fabrication in outputs, embedding consistency, idempotent ingest. Shell-only, zero-deps.
+- 🎯 **User-gated stub promotion.** `/wiki-promote` graduates stubs on explicit command — cost of LLM-generated full pages stays visible.
 - ⚠️  **Contradiction callouts.** When sources disagree, Claude inserts an inline `> [!warning]` callout citing both sides. Never silently reconciles.
-- 🕐 **`last_seen` freshness.** Every page tracks the last date any operation read, cited, or wrote it. Stale content surfaces in lint reports.
-- 📐 **Graduation discipline.** `docs/GUIDE.md` §15 documents 6 named triggers for when to unlock v2 features (hybrid search, automation). Don't scale on intuition.
-- 🔌 **Five vendored Obsidian skills.** `obsidian-markdown`, `obsidian-bases`, `json-canvas`, `obsidian-cli`, `defuddle` — MIT-licensed from [kepano/obsidian-skills](https://github.com/kepano/obsidian-skills). Auto-discovered by Claude Code.
-- 🧩 **Extensible.** `/wiki-new-template` scaffolds new source-type templates and wires them into the ingest pipeline.
+- 🕐 **`last_seen` freshness.** Every page tracks the last date any operation substantively read, cited, or wrote it. Stale content surfaces in lint reports.
+- 🔌 **Six vendored skills.** Five Obsidian (`obsidian-markdown`, `obsidian-bases`, `json-canvas`, `obsidian-cli`, `defuddle`) + one project-local (`context-engineering`). Auto-discovered by Claude Code.
+- 🧩 **Extensible.** `/wiki-new-template` scaffolds new source-type templates and wires them in. Swap embedding model via `ZWIKI_EMBED_MODEL`. Graduate to faiss when numpy gets slow (swap path documented).
 
 ---
 
@@ -137,24 +142,26 @@ The filed answer joins the wiki. The next related query cites it.
 Setting expectations explicitly:
 
 - **Not a pre-built knowledge base.** Zero content bundled. You bring the sources.
-- **Not a search engine.** Navigation is `wiki/index.md` + `[[wikilinks]]`. No embeddings at the default scale.
+- **Not a hosted service.** Runs locally against your Claude Code subscription. Your data never leaves your disk unless you push it.
+- **Not a vector DB.** Core retrieval is grep-first lexical; semantic is opt-in, local-only (numpy dot-product over ≤90MB sentence-transformers model). No Postgres, no pgvector, no cloud.
 - **Not a replacement for reading.** It compounds what you've *already read* — doesn't let you skip reading.
 - **Not a chat interface.** Every query produces a filed, cited, durable answer — not ephemeral conversation.
-- **Not a hosted service.** Runs locally against your Claude Code subscription. Your data never leaves your disk unless you push it.
-- **Not designed for 10,000+ sources out of the box.** See `docs/GUIDE.md` §15 for the scaling ladder.
+- **Not tuned for 100,000+ pages.** The numpy dot-product ceiling sits around ~50K pages on a laptop. Past that, swap to faiss (path documented in [`docs/DEFERRED.md`](docs/DEFERRED.md)).
 
 ---
 
 ## Slash commands
 
-**Core lifecycle** (the four canonical operations):
+**Core lifecycle** (the six canonical operations):
 
 | Command | What it does |
 |---|---|
 | `/wiki-ingest [path]` | Compile new files from `raw/` into wiki pages |
 | `/wiki-query <question>` | Answer a question from the compiled wiki, file the answer back |
 | `/wiki-lint` | Audit the wiki; auto-fix what's fixable, report the rest |
-| `/wiki-compile` | Regenerate `wiki/index.md` from the filesystem |
+| `/wiki-compile` | Regenerate sidecar cache + sharded index from the filesystem |
+| `/wiki-promote [slug\|--list\|--all]` | Graduate stubs that crossed promotion thresholds (user-gated) |
+| `/wiki-search <query>` | Grep-first ranked search; read-only browse primitive |
 
 **Helpers** (quality-of-life commands):
 
@@ -163,9 +170,10 @@ Setting expectations explicitly:
 | `/wiki-init` | First-run: topic-setup wizard + directory scaffold. Re-runs: verification only. |
 | `/wiki-add <url-or-path>` | Fetch a URL or copy a file into `raw/`; optionally ingest immediately |
 | `/wiki-status` | Read-only vault summary — counts, stubs near promotion, recent activity |
+| `/wiki-enable-semantic` | One-shot opt-in for local hybrid retrieval (installs deps, builds embeddings, verifies) |
 | `/wiki-new-template <name>` | Scaffold a new template and wire it into the ingest pipeline |
 
-All eight commands read `CLAUDE.md` first. None of them touch `raw/` existing files. Only three (`/wiki-init`, `/wiki-add`, `/wiki-new-template`) may write to `CLAUDE.md` or create new files in `raw/`.
+All 11 commands read `CLAUDE.md` first. None of them touch `raw/` existing files. Only `/wiki-init`, `/wiki-add`, and `/wiki-new-template` may write to `CLAUDE.md` or create new files in `raw/`.
 
 ---
 
@@ -177,8 +185,11 @@ All eight commands read `CLAUDE.md` first. None of them touch `raw/` existing fi
 |---|---|---|
 | [Claude Code](https://claude.ai/code) | any recent | Runs the slash commands |
 | [Obsidian](https://obsidian.md) | ≥ 1.4 | Reading surface (MathJax, graph view, Properties) |
+| Python 3 | ≥ 3.10 | `scripts/*.py` — pre-installed on macOS/Linux |
 | `git` | any | History and multi-machine sync |
 | `defuddle` *(optional)* | any | Clean web-page extraction; `npm install -g defuddle` |
+| `markitdown` *(optional)* | any | PDF/DOCX/PPTX extraction; `pip install 'markitdown[all]'` |
+| `numpy` + `sentence-transformers` *(optional)* | latest | Local hybrid retrieval; installed by `/wiki-enable-semantic` |
 
 **Install:**
 
@@ -196,8 +207,13 @@ macOS and Linux paths are assumed. Windows works via WSL.
 ## Documentation
 
 - **[docs/GUIDE.md](docs/GUIDE.md)** — step-by-step walkthroughs, file conventions, troubleshooting, graduation discipline
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — system design: sidecar cache, sharded index, retrieval ladder, context engineering, extension points
+- **[docs/DEFERRED.md](docs/DEFERRED.md)** — deliberately-deferred work with trigger conditions (batched markitdown, faiss swap, chapter splitter, etc.)
 - **[CLAUDE.md](CLAUDE.md)** — the operating spec (loaded into every Claude Code session)
-- **[.claude/commands/](.claude/commands/)** — the eight slash commands
+- **[.claude/commands/](.claude/commands/)** — the 11 slash commands
+- **[.claude/skills/context-engineering/](.claude/skills/context-engineering/SKILL.md)** — project-local skill: subagent dispatch, `/rewind` vs `/compact` vs `/clear`, prompt-cache structure
+- **[scripts/README.md](scripts/README.md)** — tooling reference (build_meta, shard_index, wiki_search, semantic, check_extraction)
+- **[tests/README.md](tests/README.md)** — 11 invariants and what each guards
 - **[templates/](templates/)** — the seven page templates Claude follows when creating wiki pages
 - **[docs/obsidian-skills-provenance.md](docs/obsidian-skills-provenance.md)** — provenance of the five vendored Obsidian skills
 
@@ -205,12 +221,13 @@ macOS and Linux paths are assumed. Windows works via WSL.
 
 ## Status
 
-**Beta.** The core four operations (ingest / query / lint / compile) are stable and have been dogfooded on a real vault with multiple sources, multi-source synthesis queries, and cross-page lint passes. The four helper commands (`init`, `add`, `status`, `new-template`) have been end-to-end tested against a scratch vault and a real URL (`defuddle` path validated).
+**Beta.** The six core operations (ingest / query / lint / compile / promote / search) and five helpers are implemented. Scripts layer has 11 invariant tests passing; synthetic fixture tests confirm the sidecar + sharding + hybrid-search paths work end-to-end. First real-world dogfooding of the scaled architecture is in progress — surfaces will bite before they don't.
 
 Known limits:
 
-- **Scale ceiling** around low-hundreds of sources. Past ~500 pages, the single `wiki/index.md` navigation approach needs to become hierarchical (pattern documented in `docs/GUIDE.md` §15).
-- **No built-in retrieval tool.** Past ~2,000 sources, you'll want BM25 + embeddings + rerank via an MCP tool. Graduation trigger documented.
+- **numpy dot-product ceiling** around ~50K pages. Queries become noticeably slow past that point; swap path to faiss documented in [`docs/DEFERRED.md`](docs/DEFERRED.md).
+- **Subagent-based INGEST** benefits from Claude Code's Agent tool being reliable. Heavy batches (>20 sources) should be split into multiple commands until the subagent pattern is stress-tested at scale.
+- **markitdown subprocess overhead** (~200–500 ms per file) is noticeable past ~30 sources per batch. Parallelization pattern documented in [`docs/DEFERRED.md`](docs/DEFERRED.md).
 - **Windows is WSL-only.** Path handling assumes POSIX.
 
 If you hit an edge case, [open an issue](../../issues). If a template doesn't fit your source type, use `/wiki-new-template` or propose one via a PR.
@@ -219,14 +236,23 @@ If you hit an edge case, [open an issue](../../issues). If a template doesn't fi
 
 ## Roadmap
 
-The template is deliberately minimal. The **graduation discipline** in `docs/GUIDE.md` §15 defines specific metric thresholds for when to unlock each of these; nothing ships until its threshold fires.
+Shipped in the scale-architecture pass (see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)):
 
-- [ ] Hybrid search (BM25 + embeddings + rerank via MCP) — unlock when sources > 50 or `grep wiki/` > 2s
-- [ ] Hierarchical index (per-section `_index.md` becomes load-bearing) — unlock when `wiki/index.md` > 500 lines or 10k tokens
-- [ ] Confidence scoring / supersession — unlock when ≥5 pages have open contradictions > 2 weeks
-- [ ] Two-model validation — unlock on any confirmed hallucination
-- [ ] Knowledge-graph layer (typed edges in `related:` frontmatter) — unlock when ≥3 queries/week need graph traversal
-- [ ] Scheduled automation (cron `/wiki-ingest`) — unlock when manual ingest ≥5×/week for 2 weeks
+- [x] **Sharded index** — `wiki/index.md` stays <1K tokens; per-type and per-tag shards auto-split at 10K-token cap
+- [x] **Sidecar cache** — `wiki/.meta/` kills O(N²) post-pass recomputation
+- [x] **Hybrid search** — lexical (BM25) + local semantic (sentence-transformers) merged via RRF; opt-in via `/wiki-enable-semantic`
+- [x] **Subagent INGEST dispatch** — parent context stays thin at batch scale
+- [x] **Invariant test suite** — 11 shell tests; fabrication, drift, idempotency, embedding consistency
+
+Deferred with documented trigger conditions ([`docs/DEFERRED.md`](docs/DEFERRED.md)):
+
+- [ ] **Batched markitdown extraction** — unlock when batch ingest feels slow before LLM work starts
+- [ ] **Automated chapter splitter for >200K-token books** — unlock when 3+ books have gone through the manual flow
+- [ ] **Operation-semantics LLM round-trip tests** — unlock when vault has >20 real sources and a production regression bites
+- [ ] **faiss swap for numpy dot-product** — unlock when `scripts/semantic.py` consistently takes >100ms
+- [ ] **Query expansion (Haiku → 2 alt phrasings → RRF merge)** — unlock when semantic recall feels weak on natural-language queries
+- [ ] **Confidence scoring / supersession** — unlock when ≥5 pages have open contradictions > 2 weeks
+- [ ] **Knowledge-graph layer** — unlock when ≥3 queries/week need typed-edge graph traversal
 
 ---
 

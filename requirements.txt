@@ -1,0 +1,20 @@
+# z-wiki tooling — optional Python dependencies.
+#
+# The core scripts (build_meta.py, shard_index.py, wiki_search.py with
+# --mode lexical) run on Python 3 stdlib alone — nothing here is required
+# to use z-wiki.
+#
+# Install these only if you want local semantic search:
+#   pip install -r requirements.txt
+#
+# Everything still works without them; wiki_search.py falls back to
+# lexical (BM25) mode when embeddings are absent or sentence-transformers
+# is not importable.
+
+# Vector math + npy I/O.
+numpy>=1.24
+
+# Local embedding model (all-MiniLM-L6-v2 by default; ~90MB, CPU-friendly).
+# Pulls in torch as a transitive dep; see sentence-transformers docs for
+# CUDA / MPS variants.
+sentence-transformers>=2.2

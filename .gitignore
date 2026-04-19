@@ -15,10 +15,14 @@
 *.swp
 *.tmp
 *~
+.vscode/
+.idea/
 
 # Misc
 node_modules/
 .venv/
+__pycache__/
+*.pyc
 
 # Stray images / binaries dropped in the repo root by mistake.
 # Real vault images belong in wiki/attachments/images/ or raw/assets/.
